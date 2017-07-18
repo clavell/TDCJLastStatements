@@ -34,23 +34,16 @@ extractStatement <- function(element,links){
         sink()
         statements
 }
-#here i'm testing rprof
-Rprof()
-badboytest <- extractStatement(statementEl,statementLinks[1:6])
-Rprof(NULL)
-summaryRprof()$by.self
-#testing system.time
-system.time(badboytest <- extractStatement(statementEl,statementLinks[1:6]))
 
 statementEl <- "p:nth-child(10), p:nth-child(11)"
-badboytalk <- extractStatement(statementEl,statementLinks)
+statements <- extractStatement(statementEl,statementLinks)
 #not all of statement recorded in some cases
 statementEl2 <- "p:nth-child(10), p:nth-child(11), p:nth-child(12)"
-badboytalk2 <- extractStatement(statementEl2,statementLinks)
+statements2 <- extractStatement(statementEl2,statementLinks)
 
 #if there's an error see which prisoner is generating the error
 sink();543 - length(readLines("test"))
-murderers$lastStatement
+executions$lastStatement
 
 #can try to get prisoner information, but mostly stored as photos
 #first get the link addresses
@@ -72,17 +65,20 @@ tablenames <- gsub("<.*?>", "", tablenames)
 theTable <- html_nodes(prison, css = "td")
 theTable <- gsub("<.*?>", "", theTable)
 
-murderers <- as.data.table(t(matrix(theTable,ncol = 542))) 
-names(murderers) <- tablenames
-murderers <- murderers[,-c(2:3)][,lastStatement := badboytalk2]
-murderers <- murderers[,Execution := as.integer(Execution)]
-setkey(murderers, Execution)
-murderers <- murderers[,Race := gsub(" ", "", Race)]
-murderers <- murderers[,Date := mdy(Date)]
-murderers <- murderers[,Age := as.integer(gsub(" ", "", Age))]
-murderers <- murderers[,newTDCJ := as.integer(gsub("999", "1", `TDCJ Number`))]
-murderers <- murderers[,newTDCJ := as.integer(gsub("^1$", "999", newTDCJ))]
-murderers <- murderers[,County := gsub("^ | $", "", County)]
+executions <- as.data.table(t(matrix(theTable,ncol = 542))) 
+names(executions) <- tablenames
+executions <- executions[,-c(2:3)][,lastStatement := statements2]
+executions <- executions[,Execution := as.integer(Execution)]
+setkey(executions, Execution)
+executions <- executions[,Race := gsub(" ", "", Race)]
+executions <- executions[,Date := mdy(Date)]
+executions <- executions[,Age := as.integer(gsub(" ", "", Age))]
+#it looks like instead of going to 1000 when they got to 999, they started using 999001,999002,
+#etc. replacing 999 prefixes with "1" makes for a better grpahing experience.
+executions <- executions[,newTDCJ := as.integer(gsub("999", "1", `TDCJ Number`))]
+#oops turned TDCJ Number 999 to 1, better change it back.
+executions <- executions[,newTDCJ := as.integer(gsub("^1$", "999", newTDCJ))]
+executions <- executions[,County := gsub("^ | $", "", County)]
 
 #make sure all of the counties are actually counties of texas and correctly spelled
 #check against wikipedia for consistency at least
@@ -92,15 +88,15 @@ countiesListWiki <- read_html(wikiCountiesPage) %>% html_nodes(countiesSelector)
                         html_text()
 countiesListWiki <- countiesListWiki[256:length(countiesListWiki)]
 countiesListWiki <- gsub(" County", "", countiesListWiki)
-all(murderers$County %in% countiesListWiki)
+all(executions$County %in% countiesListWiki)
 
-fwrite(murderers,file = "TexasDeathRowLastStatements.csv")
+fwrite(executions,file = "TexasDeathRowLastStatements.csv")
 test <- fread("TexasDeathRowLastStatements.csv")[,Date:=ymd(Date)]
-murderers[510]
+executions[510]
 
-setkey(murderers,County,`Last Name`)
+setkey(executions,County,`Last Name`)
 #Do some exploratory analysis
-g <- ggplot(data = murderers)
+g <- ggplot(data = executions)
 g + geom_histogram(aes(x=Date,colour = Age))
 g + geom_boxplot(aes(x=Race,y=Age,colour=Race),alpha=.02)
 h <- g + geom_point(aes(x=Date,y=Race,colour=Race),alpha=.8)
@@ -109,7 +105,7 @@ gh <- g + geom_point(aes(y=Execution,x=Date,colour = Race),alpha = .5) +
         facet_grid(Race~.) + 
         coord_cartesian(xlim = c(ymd("2000-10-12"),ymd("2002-10-12")))
 ggplotly(gh)
-murderers[,unique(Date)]
+executions[,unique(Date)]
 
 
 #what's wrong
